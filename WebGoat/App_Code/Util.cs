@@ -13,6 +13,18 @@ namespace OWASP.WebGoat.NET.App_Code
         
         public static int RunProcessWithInput(string cmd, string args, string input)
         {
+            // Validate executable and arguments before use
+            if (!IsSafeExecutable(cmd))
+            {
+                log.Error("Unsafe executable name: " + cmd);
+                throw new ArgumentException("Unsafe executable name.");
+            }
+            if (!IsSafeFilePath(args))
+            {
+                log.Error("Unsafe file path in arguments: " + args);
+                throw new ArgumentException("Unsafe file path in arguments.");
+            }
+
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
                 WorkingDirectory = Settings.RootDir,
@@ -89,6 +101,37 @@ namespace OWASP.WebGoat.NET.App_Code
                 }
             }
         }
+        // Helper method to validate executable name/path
+        private static bool IsSafeExecutable(string exe)
+        {
+            // Only allow known safe executables (e.g., sqlite3)
+            string[] allowedExecutables = { "sqlite3", "sqlite3.exe" };
+            string exeName = Path.GetFileName(exe).ToLowerInvariant();
+            foreach (var allowed in allowedExecutables)
+            {
+                if (exeName == allowed)
+                    return true;
+            }
+            return false;
+        }
+
+        // Helper method to validate file path arguments
+        private static bool IsSafeFilePath(string path)
+        {
+            // Only allow file paths with safe characters
+            // Disallow command line metacharacters
+            char[] unsafeChars = { ';', '&', '|', '>', '<', '`', '$', '%', '!', '=', '\'', '"' };
+            foreach (var c in unsafeChars)
+            {
+                if (path.Contains(c.ToString()))
+                    return false;
+            }
+            // Optionally, check for absolute/relative path and extension
+            // Only allow .db or .sqlite files
+            string ext = Path.GetExtension(path).ToLowerInvariant();
+            if (ext != ".db" && ext != ".sqlite")
+                return false;
+            return true;
+        }
     }
 }
-
